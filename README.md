@@ -291,9 +291,8 @@ MIT License — see [LICENSE](LICENSE) file for details.
 ## Contact
 
 **Ahmed Senary**  
-British University in Egypt  
-Email: ahmed.senary@gmail.com  
-GitHub: [@<your-username>]
+The British University in Egypt  
+Email: ahmedsenary235@gmail.com  
 
 ---
 
