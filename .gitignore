@@ -1,0 +1,55 @@
+# Pipeline outputs (regenerated at runtime)
+outputs/stage1_clean_data/
+outputs/stage2_features/
+outputs/stage3_split/
+outputs/stage4_models/
+outputs/stage5_consensus/
+outputs/stage6_fda_predictions/
+outputs/stage7_validation/
+outputs/stage8_triage/
+
+# Raw data files (download separately — see data/README.md)
+data/*.csv
+data/*.txt
+fda_library/*.csv
+fda_library/*.txt
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments
+venv/
+env/
+.venv/
+.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Model checkpoints (large files)
+*.ckpt
+*.joblib
+*.cbm
+
+# Large data files
+*.npz
+*.npy
