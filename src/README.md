@@ -17,7 +17,6 @@ This directory contains all 12 pipeline scripts.
 | 7 | `stage7_external_validation_colab.py` | Google Colab (T4 GPU) | ~3 min |
 | 8 | `stage8_safety_triage.py` | Local | ~5 min |
 | — | `filter_fda_library.py` | Local | <1 min (run before Stage 6) |
-| — | `get_fda_library.py` | Local | <2 min (fallback FDA downloader) |
 
 ## Notes
 
