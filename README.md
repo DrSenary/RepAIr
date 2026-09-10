@@ -263,10 +263,10 @@ If you use RepAIr in your research, please cite:
 
 ```bibtex
 @software{senary_repair_2026,
-  author = {Ahmed Senary},
+  author = {Ahmed Senary, Ahmed Soliman},
   title = {RepAIr: AI-Driven DNA Repair Inhibitor Discovery via Hybrid Consensus Screening},
   year = {2026},
-  url = {https://github.com/<your-username>/RepAIr}
+  url = {https://github.com/DrSenary/RepAIr}
 }
 ```
 
