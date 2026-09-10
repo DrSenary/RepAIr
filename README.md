@@ -294,6 +294,10 @@ MIT License — see [LICENSE](LICENSE) file for details.
 The British University in Egypt  
 Email: ahmedsenary235@gmail.com  
 
+**Ahmed Soliman**  
+The British University in Egypt  
+Email: Ahmed.soliman.bue.edu.eg
+
 ---
 
 <p align="center">
