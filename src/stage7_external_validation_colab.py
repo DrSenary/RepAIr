@@ -1,5 +1,5 @@
 """
-ATAD5AI — Stage 7: External Validation on AID 493107 (Google Colab)
+RepAIr — Stage 7: External Validation on AID 493107 (Google Colab)
 
 Hybrid Consensus Screening Pipeline — External Validation
 
@@ -80,7 +80,7 @@ DATA_DIR = '/content/data'
 os.makedirs(DATA_DIR, exist_ok=True)
 
 print("=" * 78)
-print("ATAD5AI — STAGE 7: EXTERNAL VALIDATION ON AID 493107")
+print("RepAIr — STAGE 7: EXTERNAL VALIDATION ON AID 493107")
 print("=" * 78)
 
 # Upload validation files
@@ -496,7 +496,7 @@ for i, (_, row) in enumerate(top_val.iterrows()):
 # =====================================================================
 report_path = os.path.join(output_dir, 'validation_report.txt')
 with open(report_path, 'w') as f:
-    f.write("ATAD5AI — STAGE 7 EXTERNAL VALIDATION REPORT\n")
+    f.write("RepAIr — STAGE 7 EXTERNAL VALIDATION REPORT\n")
     f.write("=" * 60 + "\n\n")
     f.write("VALIDATION DATASET\n")
     f.write(f"  Source: PubChem AID 493107 (7-point dose-response validation)\n")

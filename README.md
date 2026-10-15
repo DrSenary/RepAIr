@@ -83,11 +83,13 @@ RepAIr/
 │   ├── stage5_consensus.py            # Hybrid consensus fusion
 │   ├── stage6_fda_repurposing_colab.py # FDA screen (Google Colab GPU)
 │   ├── stage7_external_validation_colab.py # External validation
-│   ├── stage8_safety_triage.py        # 7-filter safety triage
-│   ├── filter_fda_library.py          # CLUE → FDA-approved CSV filter
-│   └── get_fda_library.py             # FDA library downloader (fallback)
+│   ├── stage8_safety_triage.py        # 7-filter safety triage (unified fail-polarity)
+│   ├── filter_fda_library.py          # CLUE → FDA-approved CSV (salt-stripped + deduped)
+│   ├── get_fda_library.py             # FDA library downloader (fallback)
+│   └── verify_and_fix_fda_triage.py   # Audit + figure regeneration script
 ├── data/                               # Raw PubChem CSVs (not included — see Data Sources)
 ├── outputs/                            # Pipeline outputs (not included — generated at runtime)
+├── assets/                             # Pipeline figures + fixed figures
 └── docs/                               # Technical documentation (available separately)
 ```
 
@@ -123,9 +125,9 @@ Place all CSVs in the `data/` directory.
 
 ```bash
 # Stage 1-3: Local (Mac/Linux, ~45 min total)
-python src/stage1_curation.py
+python src/stage1_curation.py       # 5-step RDKit standardization (desalt FIRST)
 python src/stage2_features.py
-python src/stage3_split.py
+python src/stage3_split.py           # Bemis-Murcko scaffold-stratified 80/10/10
 
 # Stage 4a: Google Colab (T4 GPU, ~40 min)
 # Upload smiles_train.csv, smiles_val.csv, smiles_test.csv to Colab
@@ -136,10 +138,12 @@ python src/stage4b_catboost.py
 python src/stage4c_balanced_rf.py
 
 # Stage 5: Local (~1 min)
-python src/stage5_consensus.py
+python src/stage5_consensus.py      # P_consensus + variance filter
 
 # Stage 6: Google Colab (GPU, ~6 min)
 # Upload fda_approved.csv + 3 trained models to Colab
+# Stage 6 now re-applies the 5-step salt-strip + InChIKey dedup
+# before featurization, ensuring doxazosin mesylate collapses into doxazosin
 # Run stage6_fda_repurposing_colab.py
 
 # Stage 7: Google Colab (GPU, ~3 min)
@@ -226,6 +230,66 @@ The pipeline independently identified **olaparib** (rank 5, P_consensus = 0.510)
 - The model fails to reject known luciferase reporter artifacts (only 1.8% counter-screen coverage in training data)
 - Stage 8 chemical-rule safety triage addresses this by filtering 65% of top candidates as PAINS/BRENK/luciferase artifacts
 - The remaining 17 candidates (5 Tier 1 + 12 Tier 2) are biologically plausible DNA repair modulators
+
+---
+
+## Code Reproducibility Patches (v1.0.0)
+
+Three peer-reviewer-relevant patches have been applied to ensure full
+alignment between the manuscript and the committed source code:
+
+### Patch 1: Stage 1 desalting order (`src/stage1_curation.py`)
+
+The original code ran `is_organic()` *before* `SaltRemover.StripMol()`,
+which rejected valid organic drugs formulated as metallic salts (Na⁺, K⁺,
+Mg²⁺, Ca²⁺) before their counter-ion was removed. The patched code
+runs `SaltRemover.StripMol()` + `LargestFragmentChooser(preferOrganic=True)`
+*first*, then applies the element filter on the resulting parent fragment.
+This matches the 5-step RDKit standardization protocol described in
+§2.1 of the manuscript.
+
+### Patch 2: FDA library salt-stripping (`src/filter_fda_library.py` + `src/stage6_fda_repurposing_colab.py`)
+
+The original `filter_fda_library.py` performed only canonical-SMILES
+deduplication, leaving duplicate salt formulations (e.g., doxazosin and
+doxazosin mesylate) as separate rows. The patched version applies the
+full 5-step RDKit salt-strip pipeline + parent-name normalization +
+InChIKey connectivity-block deduplication, so doxazosin mesylate
+(P_cons = 0.745) correctly collapses into parent doxazosin (P_cons = 0.775)
+and omeprazole-magnesium (0.705) normalizes to omeprazole. The same
+standardization is re-applied at the top of Stage 6 as a safety net.
+
+### Patch 3: Stage 8 fail-polarity unification (`src/stage8_safety_triage.py`)
+
+The original code stored `lipinski_pass` and `veber_pass` with
+True = Clean (Pass), while `pains_flag`, `nih_aggregator_flag`,
+`brenk_flag`, and `luciferase_inhibitor_flag` stored True = Flagged (Fail).
+The patched code adds explicit `lipinski_fail`, `veber_fail`, and
+`pfizer_3_75_fail` columns with unified True = Flagged polarity, so
+the summary printer no longer needs a `'pass' in col` branch. The
+reported counts (18 Flagged / 31 Clean for Lipinski, 25 Flagged / 24
+Clean for Veber) are now computed identically across all seven filters.
+
+### Audit script: `src/verify_and_fix_fda_triage.py`
+
+A standalone audit + figure-regeneration script that:
+- (Audit mode) prints the corrected Top 20 FDA candidates (salt-stripped)
+  and the corrected per-filter Flagged/Clean counts, and regenerates the
+  two publication figures (`fig5_top20_fda_fixed.png` and
+  `fig7_safety_triage_fixed.png`).
+- (CSV repair mode) re-applies the full salt-strip + 7-filter triage
+  pipeline to an existing `fda_candidates.csv` from Stage 6.
+
+Run as:
+```bash
+# Audit + figure regeneration (no arguments required)
+python3 src/verify_and_fix_fda_triage.py
+
+# CSV pipeline repair
+python3 src/verify_and_fix_fda_triage.py \
+    --fda_csv outputs/fda_candidates.csv \
+    --out_dir outputs/fixed
+```
 
 ---
 

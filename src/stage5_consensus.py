@@ -1,5 +1,5 @@
 """
-ATAD5AI — Stage 5: Hybrid Consensus Fusion
+RepAIr — Stage 5: Hybrid Consensus Fusion
 Hybrid Consensus Screening Pipeline
 """
 
@@ -54,7 +54,7 @@ TOP_PERCENTILE_THRESHOLD = 0.01   # Top 1% by P_consensus
 VARIANCE_THRESHOLD = 0.04         # Discard high-variance predictions
 
 print("=" * 78)
-print("ATAD5AI — STAGE 5: HYBRID CONSENSUS FUSION")
+print("RepAIr — STAGE 5: HYBRID CONSENSUS FUSION")
 print("=" * 78)
 
 # =====================================================================
@@ -367,7 +367,7 @@ for i in range(min(20, len(output_predictions))):
 # =====================================================================
 report_path = os.path.join(OUTPUT_DIR, 'consensus_report.txt')
 with open(report_path, 'w') as f:
-    f.write("ATAD5AI — STAGE 5 CONSENSUS REPORT (Hybrid Consensus Pipeline)\n")
+    f.write("RepAIr — STAGE 5 CONSENSUS REPORT (Hybrid Consensus Pipeline)\n")
     f.write("=" * 60 + "\n\n")
     f.write("CONSENSUS STRATEGY (per PriA-SSB spec)\n")
     f.write(f"  1. Soft-Voting Probability: P_consensus = (P_chemprop + P_catboost + P_rf) / 3.0\n")

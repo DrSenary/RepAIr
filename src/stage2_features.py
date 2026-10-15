@@ -1,5 +1,5 @@
 """
-ATAD5AI — Stage 2: Dual Feature Representation (ECFP6 Counts + SMILES for D-MPNN)
+RepAIr — Stage 2: Dual Feature Representation (ECFP6 Counts + SMILES for D-MPNN)
 Hybrid Consensus Screening Pipeline
 """
 
@@ -67,7 +67,7 @@ RADIUS = 3          # ECFP6 = Morgan radius 3 (diameter 6)
 DTYPE = np.uint16   # Per spec: uint16 (counts up to 65,535)
 
 print("=" * 78)
-print("ATAD5AI — STAGE 2: DUAL FEATURE REPRESENTATION")
+print("RepAIr — STAGE 2: DUAL FEATURE REPRESENTATION")
 print("=" * 78)
 print(f"\nStream A: Canonical SMILES → Chemprop D-MPNN (saved as CSV)")
 print(f"Stream B: ECFP6 count vectors, {N_BITS}-bit, radius={RADIUS}")
@@ -310,7 +310,7 @@ for bit in top_enriched:
 # =====================================================================
 report_path = os.path.join(OUTPUT_DIR, 'feature_report.txt')
 with open(report_path, 'w') as f:
-    f.write("ATAD5AI — STAGE 2 FEATURE REPORT (Hybrid Consensus Pipeline)\n")
+    f.write("RepAIr — STAGE 2 FEATURE REPORT (Hybrid Consensus Pipeline)\n")
     f.write("=" * 60 + "\n\n")
     f.write("INPUT\n")
     f.write(f"  File: {INPUT_FILE}\n")

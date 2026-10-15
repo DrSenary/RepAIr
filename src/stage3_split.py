@@ -1,5 +1,5 @@
 """
-ATAD5AI — Stage 3: Scaffold-Stratified 80/10/10 Split
+RepAIr — Stage 3: Scaffold-Stratified 80/10/10 Split
 Hybrid Consensus Screening Pipeline
 """
 
@@ -43,7 +43,7 @@ OUTPUT_DIR = 'outputs/stage3_split'
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 print("=" * 78)
-print("ATAD5AI — STAGE 3: SCAFFOLD-STRATIFIED 80/10/10 SPLIT")
+print("RepAIr — STAGE 3: SCAFFOLD-STRATIFIED 80/10/10 SPLIT")
 print("=" * 78)
 
 # =====================================================================
@@ -327,7 +327,7 @@ print(f"  Saved scaffold_folds.csv (5-fold CV assignment)")
 # =====================================================================
 report_path = os.path.join(OUTPUT_DIR, 'split_report.txt')
 with open(report_path, 'w') as f:
-    f.write("ATAD5AI — STAGE 3 SPLIT REPORT (Hybrid Consensus Pipeline)\n")
+    f.write("RepAIr — STAGE 3 SPLIT REPORT (Hybrid Consensus Pipeline)\n")
     f.write("=" * 60 + "\n\n")
     f.write("SPLIT STRATEGY\n")
     f.write("  Bemis-Murcko scaffold-stratified 80/10/10\n")

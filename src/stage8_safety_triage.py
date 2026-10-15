@@ -1,5 +1,5 @@
 """
-ATAD5AI — Stage 8: Safety Triage on Top FDA Candidates
+RepAIr — Stage 8: Safety Triage on Top FDA Candidates
 Hybrid Consensus Screening Pipeline — Final Stage
 
 Applies chemical-rule-based safety filters to the top FDA repurposing
@@ -20,20 +20,20 @@ PREREQUISITES:
     (if you want to filter the full 2,680-drug library, not just top candidates)
 
 RUN:
-  cd ~/Desktop/ATAD5AI_project
+  cd ~/Desktop/RepAIr_project
   python src/stage8_safety_triage.py
 
 EXPECTED RUNTIME: ~5 minutes (no GPU needed, CPU-only)
 
 ==============================================================================
-MODULE 6 SPEC (Adapted for ATAD5AI — mammalian target, luciferase assay)
+MODULE 6 SPEC (Adapted for RepAIr — mammalian target, luciferase assay)
 ==============================================================================
 Original PriA-SSB spec:
   1. Filter PAINS-A/B/C and aggregators
   2. AlphaScreen Quencher Check
   3. Bacterial Permeation Scoring (eNTRy Rules for Gram-negative uptake)
 
-ATAD5AI adaptation:
+RepAIr adaptation:
   1. Filter PAINS-A/B/C and aggregators          ← KEPT
   2. Luciferase inhibitor SMARTS filter          ← REPLACED AlphaScreen
      (critical because AID 504467 is a luciferase reporter assay)
@@ -94,7 +94,7 @@ OUTPUT_DIR = 'outputs/stage8_triage'
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 print("=" * 78)
-print("ATAD5AI — STAGE 8: SAFETY TRIAGE ON TOP FDA CANDIDATES")
+print("RepAIr — STAGE 8: SAFETY TRIAGE ON TOP FDA CANDIDATES")
 print("=" * 78)
 print(f"\nFilters to apply (per adapted Module 6 spec):")
 print("  1. PAINS-A/B/C filter (Baell 2010)")
@@ -274,10 +274,13 @@ df['brenk_flag'] = False
 df['luciferase_inhibitor_flag'] = False
 df['luciferase_matched_patterns'] = ''
 df['lipinski_pass'] = False
+df['lipinski_fail'] = False   # NEW: unified fail-polarity column (True = Flagged/Failed)
 df['lipinski_violations'] = ''
 df['veber_pass'] = False
+df['veber_fail'] = False       # NEW: unified fail-polarity column (True = Flagged/Failed)
 df['veber_violations'] = ''
 df['pfizer_3_75_pass'] = False
+df['pfizer_3_75_fail'] = False # NEW: unified fail-polarity column (True = Flagged/Failed)
 df['pfizer_violations'] = ''
 
 # Compute ADME properties for the report
@@ -295,8 +298,11 @@ for idx, row in df.iterrows():
     if mol is None:
         # Mark all filters as failed
         df.at[idx, 'lipinski_pass'] = False
+        df.at[idx, 'lipinski_fail'] = True
         df.at[idx, 'veber_pass'] = False
+        df.at[idx, 'veber_fail'] = True
         df.at[idx, 'pfizer_3_75_pass'] = False
+        df.at[idx, 'pfizer_3_75_fail'] = True
         df.at[idx, 'lipinski_violations'] = 'invalid_smiles'
         continue
 
@@ -318,16 +324,19 @@ for idx, row in df.iterrows():
     # Lipinski
     passes, violations = check_lipinski(mol)
     df.at[idx, 'lipinski_pass'] = passes
+    df.at[idx, 'lipinski_fail'] = not passes   # UNIFIED fail polarity
     df.at[idx, 'lipinski_violations'] = '; '.join(violations) if violations else ''
 
     # Veber
     passes, violations = check_veber(mol)
     df.at[idx, 'veber_pass'] = passes
+    df.at[idx, 'veber_fail'] = not passes       # UNIFIED fail polarity
     df.at[idx, 'veber_violations'] = '; '.join(violations) if violations else ''
 
     # Pfizer 3/75
     passes, violations = check_pfizer_3_75(mol)
     df.at[idx, 'pfizer_3_75_pass'] = passes
+    df.at[idx, 'pfizer_3_75_fail'] = not passes # UNIFIED fail polarity
     df.at[idx, 'pfizer_violations'] = '; '.join(violations) if violations else ''
 
     # ADME properties
@@ -338,7 +347,7 @@ for idx, row in df.iterrows():
     df.at[idx, 'HBA'] = Descriptors.NumHAcceptors(mol)
     df.at[idx, 'RotatableBonds'] = Descriptors.NumRotatableBonds(mol)
 
-print(f"  ✓ All filters applied")
+print(f"  ✓ All filters applied (unified fail-polarity columns added)")
 
 # =====================================================================
 # 5. Compute overall safety score
@@ -366,24 +375,27 @@ df['safety_tier'] = df.apply(assign_tier, axis=1)
 # =====================================================================
 print(f"\n[4/4] Computing summary...")
 
-# Per-filter rejection counts
-print(f"\n=== FILTER RESULTS ===")
+# Per-filter rejection counts — uses UNIFIED fail-polarity columns
+# (lipinski_fail, veber_fail, pfizer_3_75_fail) so all "Flagged" counts
+# are computed identically: df[col].sum() where True = Flagged/Failed.
+print(f"\n=== FILTER RESULTS (unified fail-polarity: True = Flagged/Failed) ===")
 print(f"\n  {'Filter':<35}{'Flagged':<10}{'Clean':<10}{'% Flagged':<10}")
 print(f"  {'-'*34}  {'-'*8}  {'-'*8}  {'-'*9}")
 
 filters = [
-    ('PAINS-A/B/C', 'pains_flag'),
-    ('NIH Aggregator/Reactivity', 'nih_aggregator_flag'),
-    ('BRENK Reactive Groups', 'brenk_flag'),
-    ('Luciferase Inhibitor SMARTS', 'luciferase_inhibitor_flag'),
-    ('Lipinski Rule of 5 (pass)', 'lipinski_pass'),
-    ('Veber Rules (pass)', 'veber_pass'),
-    ('Pfizer 3/75 (pass)', 'pfizer_3_75_pass'),
+    ('PAINS-A/B/C',                       'pains_flag'),
+    ('NIH Aggregator/Reactivity',         'nih_aggregator_flag'),
+    ('BRENK Reactive Groups',              'brenk_flag'),
+    ('Luciferase Inhibitor SMARTS',       'luciferase_inhibitor_flag'),
+    ('Lipinski Rule of 5 (fail)',        'lipinski_fail'),
+    ('Veber Rules (fail)',                'veber_fail'),
+    ('Pfizer 3/75 Rule (fail)',           'pfizer_3_75_fail'),
 ]
 
 for name, col in filters:
-    n_flagged = df[col].sum() if 'pass' not in col else (~df[col]).sum()
-    n_clean = (~df[col]).sum() if 'pass' not in col else df[col].sum()
+    # All columns now use unified fail polarity: True = Flagged/Failed
+    n_flagged = int(df[col].sum())
+    n_clean = int((~df[col]).sum())
     pct = n_flagged / len(df) * 100
     print(f"  {name:<35}{n_flagged:<10}{n_clean:<10}{pct:<10.1f}")
 
@@ -496,9 +508,9 @@ summary = {
         'nih_aggregator_flagged': int(df['nih_aggregator_flag'].sum()),
         'brenk_flagged': int(df['brenk_flag'].sum()),
         'luciferase_inhibitor_flagged': int(df['luciferase_inhibitor_flag'].sum()),
-        'lipinski_failed': int((~df['lipinski_pass']).sum()),
-        'veber_failed': int((~df['veber_pass']).sum()),
-        'pfizer_3_75_failed': int((~df['pfizer_3_75_pass']).sum()),
+        'lipinski_failed': int(df['lipinski_fail'].sum()),       # unified fail-polarity
+        'veber_failed': int(df['veber_fail'].sum()),             # unified fail-polarity
+        'pfizer_3_75_failed': int(df['pfizer_3_75_fail'].sum()), # unified fail-polarity
     },
     'adme_property_stats': {
         'MW': {
@@ -527,12 +539,12 @@ print(f"  Saved triage_summary.json")
 # =====================================================================
 report_path = os.path.join(OUTPUT_DIR, 'triage_report.txt')
 with open(report_path, 'w') as f:
-    f.write("ATAD5AI — STAGE 8 SAFETY TRIAGE REPORT (Hybrid Consensus Pipeline)\n")
+    f.write("RepAIr — STAGE 8 SAFETY TRIAGE REPORT (Hybrid Consensus Pipeline)\n")
     f.write("=" * 60 + "\n\n")
     f.write("INPUT\n")
     f.write(f"  Source: Stage 6 FDA top candidates ({len(df)} drugs)\n")
     f.write(f"  File: {input_path}\n\n")
-    f.write("FILTERS APPLIED (adapted Module 6 spec for ATAD5AI)\n")
+    f.write("FILTERS APPLIED (adapted Module 6 spec for RepAIr)\n")
     f.write(f"  1. PAINS-A/B/C (Baell 2010): flagged {summary['filter_counts']['pains_flagged']}\n")
     f.write(f"  2. NIH Aggregator/Reactivity: flagged {summary['filter_counts']['nih_aggregator_flagged']}\n")
     f.write(f"  3. BRENK Reactive Groups: flagged {summary['filter_counts']['brenk_flagged']}\n")
@@ -589,7 +601,7 @@ print(f"  - fda_tier1_clean.csv              ({len(tier1_df)} Tier 1 — recomme
 print(f"  - fda_tier2_acceptable.csv          ({len(tier2_df) if len(tier2_df) > 0 else 0} Tier 2 — backup list)")
 print(f"  - triage_summary.json              (per-filter rejection counts)")
 print(f"  - triage_report.txt                (paper-ready summary)")
-print(f"\n🎉 ATAD5AI PIPELINE COMPLETE!")
+print(f"\n🎉 RepAIr PIPELINE COMPLETE!")
 print(f"   Stage 1: Chemical curation + 4-way merge              ✅")
 print(f"   Stage 2: Dual feature representation (ECFP6 + SMILES) ✅")
 print(f"   Stage 3: Scaffold-stratified 80/10/10 split          ✅")

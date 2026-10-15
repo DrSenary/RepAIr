@@ -1,5 +1,5 @@
 """
-ATAD5AI — Stage 4c: Balanced Random Forest on ECFP6 Count Vectors
+RepAIr — Stage 4c: Balanced Random Forest on ECFP6 Count Vectors
 Hybrid Consensus Screening Pipeline
 """
 
@@ -40,7 +40,7 @@ OUTPUT_DIR = 'outputs/stage4_models'
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 print("=" * 78)
-print("ATAD5AI — STAGE 4c: BALANCED RANDOM FOREST")
+print("RepAIr — STAGE 4c: BALANCED RANDOM FOREST")
 print("=" * 78)
 
 # =====================================================================
@@ -307,7 +307,7 @@ for rank, idx in enumerate(top_indices):
 # =====================================================================
 report_path = os.path.join(OUTPUT_DIR, 'balanced_rf_report.txt')
 with open(report_path, 'w') as f:
-    f.write("ATAD5AI — STAGE 4c BALANCED RF REPORT (Hybrid Consensus Pipeline)\n")
+    f.write("RepAIr — STAGE 4c BALANCED RF REPORT (Hybrid Consensus Pipeline)\n")
     f.write("=" * 60 + "\n\n")
     f.write("ALGORITHM\n")
     f.write(f"  Balanced Random Forest (imblearn)\n")

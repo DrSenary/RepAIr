@@ -1,5 +1,5 @@
 """
-ATAD5AI — Stage 6: Hybrid Consensus FDA Drug Repurposing Screen (Google Colab)
+RepAIr — Stage 6: Hybrid Consensus FDA Drug Repurposing Screen (Google Colab)
 
 Hybrid Consensus Screening Pipeline — Final Stage of Repurposing
 
@@ -77,7 +77,7 @@ DATA_DIR = '/content/data'
 os.makedirs(DATA_DIR, exist_ok=True)
 
 print("=" * 78)
-print("ATAD5AI — STAGE 6: FDA REPURPOSING SCREEN (3-MODEL CONSENSUS)")
+print("RepAIr — STAGE 6: FDA REPURPOSING SCREEN (3-MODEL CONSENSUS)")
 print("=" * 78)
 
 # Upload required files (skips if already uploaded)
@@ -146,6 +146,83 @@ print(f"  Drug_Name column: '{drug_name_col}'")
 # Drop rows with missing SMILES
 df_fda = df_fda.dropna(subset=[smiles_col]).reset_index(drop=True)
 print(f"  After dropping missing SMILES: {len(df_fda):,}")
+
+# ---------------------------------------------------------------------
+# STEP 3b: Re-apply 5-step RDKit parent standardization BEFORE featurization.
+# This ensures that even if fda_approved.csv was prepared with an older version
+# of filter_fda_library.py (without salt-stripping), the SMILES fed into the
+# ECFP6 featurizer and D-MPNN graph builder are canonical parent structures
+# — so doxazosin mesylate (P_cons = 0.745) collapses into doxazosin (0.775)
+# and omeprazole-magnesium (0.705) normalizes to omeprazole (0.705).
+# Matches the standardization pipeline used in Stage 1 curation.
+# ---------------------------------------------------------------------
+print(f"\n[1b/6] Re-applying 5-step RDKit parent standardization to FDA library...")
+
+from rdkit.Chem import SaltRemover
+from rdkit.Chem.MolStandardize import rdMolStandardize
+
+ALLOWED_ORGANIC_ATOMS = {1, 6, 7, 8, 9, 15, 16, 17, 35, 53}  # H, C, N, O, F, P, S, Cl, Br, I
+
+_salt_remover = SaltRemover.SaltRemover()
+_largest_fragment_chooser = rdMolStandardize.LargestFragmentChooser(preferOrganic=True)
+_uncharger = rdMolStandardize.Uncharger()
+_reionizer = rdMolStandardize.Reionizer()
+_tautomer_enumerator = rdMolStandardize.TautomerEnumerator()
+
+def standardize_parent_smiles(smiles):
+    """Apply the 5-step RDKit parent-structure standardization (matches Stage 1).
+
+    Returns (canonical_parent_smiles, inchikey_first_block) or (None, None) on rejection.
+    """
+    if not isinstance(smiles, str) or not smiles.strip():
+        return None, None
+    mol = Chem.MolFromSmiles(smiles)
+    if mol is None:
+        return None, None
+    try:
+        # Step 1: Desalt FIRST
+        mol = _salt_remover.StripMol(mol)
+        mol = _largest_fragment_chooser.choose(mol)
+        if mol is None or mol.GetNumHeavyAtoms() == 0:
+            return None, None
+        # Step 2: Element filter on parent fragment
+        atom_nums = {atom.GetAtomicNum() for atom in mol.GetAtoms()}
+        if not atom_nums.issubset(ALLOWED_ORGANIC_ATOMS):
+            return None, None
+        # Step 3: Neutralize + reionize
+        mol = _uncharger.uncharge(mol)
+        mol = _reionizer.reionize(mol)
+        # Step 4: Tautomer canonicalization
+        mol = _tautomer_enumerator.Canonicalize(mol)
+        # Step 5: Canonical SMILES + InChIKey connectivity block
+        can_smiles = Chem.MolToSmiles(mol, canonical=True)
+        inchikey = Chem.MolToInchiKey(mol)
+        ik_first = inchikey.split("-")[0] if inchikey else can_smiles
+        if not can_smiles or can_smiles == '':
+            return None, None
+        return can_smiles, ik_first
+    except Exception:
+        return None, None
+
+# Run standardization
+std_results = df_fda[smiles_col].apply(standardize_parent_smiles)
+df_fda['canonical_parent_smiles'] = [r[0] for r in std_results]
+df_fda['inchikey_first'] = [r[1] for r in std_results]
+n_before = len(df_fda)
+df_fda = df_fda.dropna(subset=['canonical_parent_smiles']).reset_index(drop=True)
+print(f"  Valid parent SMILES: {len(df_fda):,} (rejected {n_before - len(df_fda):,} inorganic/invalid)")
+
+# Deduplicate by InChIKey connectivity block (preferred) or canonical parent SMILES.
+# This collapses salt duplicates (e.g., doxazosin / doxazosin mesylate) into one row.
+n_before_dedup = len(df_fda)
+df_fda = df_fda.sort_values(drug_name_col).reset_index(drop=True)
+dedup_subset = ['inchikey_first'] if df_fda['inchikey_first'].notna().any() else ['canonical_parent_smiles']
+df_fda = df_fda.drop_duplicates(subset=dedup_subset, keep='first').reset_index(drop=True)
+print(f"  After InChIKey deduplication: {len(df_fda):,} (merged {n_before_dedup - len(df_fda):,} salt duplicates)")
+
+# Switch the active SMILES column to the standardized parent SMILES
+smiles_col = 'canonical_parent_smiles'
+print(f"  Using standardized parent SMILES column: '{smiles_col}'")
 
 # =====================================================================
 # STEP 4: Generate ECFP6 features for CatBoost + RF
@@ -443,7 +520,7 @@ for i in range(min(30, len(top_filtered))):
 # =====================================================================
 report_path = os.path.join(output_dir, 'fda_screening_report.txt')
 with open(report_path, 'w') as f:
-    f.write("ATAD5AI — STAGE 6 FDA REPURPOSING REPORT (Hybrid Consensus Pipeline)\n")
+    f.write("RepAIr — STAGE 6 FDA REPURPOSING REPORT (Hybrid Consensus Pipeline)\n")
     f.write("=" * 60 + "\n\n")
     f.write("SCREENING LIBRARY\n")
     f.write(f"  Source: CLUE Repurposing Hub (Broad Institute)\n")

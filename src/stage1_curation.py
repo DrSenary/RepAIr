@@ -1,5 +1,5 @@
 """
-ATAD5AI — Stage 1: Chemical Curation, Standardization, and 4-Way Data Merge
+RepAIr — Stage 1: Chemical Curation, Standardization, and 4-Way Data Merge
 Hybrid Consensus Screening Pipeline
 """
 
@@ -21,8 +21,10 @@ Hybrid Consensus Screening Pipeline
 #     - curation_report.txt
 #
 # MODULE 1 SPEC:
-#   1. Remove inorganic molecules and organometallics
-#   2. Desalt: isolate largest organic fragment
+#   1. Desalt FIRST: SaltRemover + LargestFragmentChooser(preferOrganic=True)
+#      so metallic-salt formulations (Na+, K+, Mg2+, Ca2+) of organic drugs
+#      retain their neutral parent structure before element filtering.
+#   2. Remove inorganic molecules and organometallics (post-desalting check)
 #   3. Neutralize protonation at pH 7.4
 #   4. Standardize tautomers, canonicalize SMILES
 #   5. Deduplicate: prioritize Active (1) on label conflict
@@ -64,7 +66,7 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 SKIP_ROWS = [1, 2, 3, 4]   # PubChem metadata rows
 
 print("=" * 78)
-print("ATAD5AI — STAGE 1: CHEMICAL CURATION & 4-WAY DATA MERGE")
+print("RepAIr — STAGE 1: CHEMICAL CURATION & 4-WAY DATA MERGE")
 print("=" * 78)
 
 # =====================================================================
@@ -81,7 +83,12 @@ _reionizer = rdMolStandardize.Reionizer()   # ensures proper ionization at physi
 ORGANIC_ATOMS = {1, 6, 7, 8, 9, 15, 16, 17, 35, 53}  # H, C, N, O, F, P, S, Cl, Br, I
 
 def is_organic(mol):
-    """A molecule is 'organic' if it contains at least one C and no disallowed heavy atoms."""
+    """A molecule is 'organic' if it contains at least one C and no disallowed heavy atoms.
+
+    Note: call this AFTER salt-stripping (SaltRemover + LargestFragmentChooser)
+    so that valid organic drugs formulated as metallic salts (Na+, K+, Mg2+,
+    Ca2+) are not incorrectly rejected before their counter-ion is removed.
+    """
     if mol is None:
         return False
     has_carbon = False
@@ -93,16 +100,24 @@ def is_organic(mol):
             return False   # Contains a metal / disallowed element
     return has_carbon
 
+# Largest-fragment chooser: preferentially keeps the organic parent fragment
+# over inorganic counter-ions (Na+, K+, Mg2+, Ca2+, mesylate, Cl-, etc.)
+_largest_fragment_chooser = rdMolStandardize.LargestFragmentChooser(preferOrganic=True)
+
 def standardize_molecule(smiles):
     """
-    Full curation pipeline:
-      1. Parse SMILES
-      2. Remove inorganics + organometallics
-      3. Desalt (keep largest organic fragment)
-      4. Neutralize charges (physiological pH)
-      5. Normalize functional groups
-      6. Canonicalize tautomer
-      7. Generate canonical SMILES
+    Full curation pipeline (corrected 5-step order):
+
+      1. Parse SMILES.
+      2. Desalt FIRST via SaltRemover + LargestFragmentChooser(preferOrganic=True)
+         so metallic salts (Na+, K+, Mg2+, Ca2+) of organic drugs retain their
+         neutral parent structure before element filtering.
+      3. THEN check that the parent fragment contains only allowed organic
+         elements {H, C, N, O, F, P, S, Cl, Br, I}. Rejects genuine
+         organometallics / inorganics that survive desalting.
+      4. Neutralize formal charges (Uncharger) and physiological reionization
+         at pH 7.4 (Reionizer).
+      5. Tautomer canonicalization + canonical SMILES.
 
     Returns: canonical SMILES string, or None if molecule rejected.
     """
@@ -111,20 +126,21 @@ def standardize_molecule(smiles):
         if mol is None:
             return None
 
-        # Step 1: Remove inorganic/organometallic atoms
-        if not is_organic(mol):
+        # Step 1: Desalt FIRST — strip counter-ions, keep largest organic fragment.
+        # This preserves metallic-salt formulations of valid organic drugs
+        # (e.g., omeprazole-Mg, doxazosin mesylate, diclofenac-Na) by removing
+        # the inorganic counter-ion before any element-based filtering.
+        mol = _salt_remover.StripMol(mol)
+        mol = _largest_fragment_chooser.choose(mol)
+        if mol is None or mol.GetNumHeavyAtoms() == 0:
             return None
 
-        # Step 2: Desalt — remove counter-ions, keep largest organic fragment
-        mol = _salt_remover.StripMol(mol)
-        frags = list(Chem.GetMolFrags(mol, asMols=True, sanitizeFrags=True))
-        if not frags:
+        # Step 2: After desalting, check the parent fragment is organic.
+        # This catches genuine organometallics (e.g., ferrocene, cisplatin)
+        # that survive LargestFragmentChooser because their metal is bound
+        # to the organic framework.
+        if not is_organic(mol):
             return None
-        # Pick largest organic fragment by heavy-atom count
-        organic_frags = [f for f in frags if is_organic(f)]
-        if not organic_frags:
-            return None
-        mol = max(organic_frags, key=lambda f: f.GetNumHeavyAtoms())
 
         # Step 3: Normalize functional groups (e.g., sulfoxide → S=O form)
         mol = _normalizer.normalize(mol)
@@ -538,7 +554,7 @@ print(f"  Saved {output_excluded} ({len(df_excluded_clean):,} compounds)")
 # =====================================================================
 report_path = os.path.join(OUTPUT_DIR, 'curation_report.txt')
 with open(report_path, 'w') as f:
-    f.write("ATAD5AI — STAGE 1 CURATION REPORT (Hybrid Consensus Pipeline)\n")
+    f.write("RepAIr — STAGE 1 CURATION REPORT (Hybrid Consensus Pipeline)\n")
     f.write("=" * 60 + "\n\n")
     f.write("DATASET SOURCES\n")
     f.write(f"  Primary:    AID 504467 (PubChem qHTS for ELG1/ATAD5 inhibitors)\n")

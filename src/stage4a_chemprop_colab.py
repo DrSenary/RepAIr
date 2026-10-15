@@ -1,9 +1,9 @@
 """
-ATAD5AI — Stage 4a: Chemprop D-MPNN Training (Google Colab, v2.3.1 API)
+RepAIr — Stage 4a: Chemprop D-MPNN Training (Google Colab, v2.3.1 API)
 
 Hybrid Consensus Screening Pipeline — Model 1 of 3
 
-Trains a Directed Message Passing Neural Network (D-MPNN) on the ATAD5AI
+Trains a Directed Message Passing Neural Network (D-MPNN) on the RepAIr
 training set. The model learns molecular representations directly from
 graph structure (atoms as nodes, bonds as edges), complementing the
 ECFP6-based CatBoost and Balanced Random Forest models in Stage 4b/4c.

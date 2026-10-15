@@ -1,5 +1,5 @@
 """
-ATAD5AI — Stage 4b: CatBoost Classifier on ECFP6 Count Vectors
+RepAIr — Stage 4b: CatBoost Classifier on ECFP6 Count Vectors
 Hybrid Consensus Screening Pipeline
 """
 
@@ -41,7 +41,7 @@ OUTPUT_DIR = 'outputs/stage4_models'
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 print("=" * 78)
-print("ATAD5AI — STAGE 4b: CATBOOST CLASSIFIER")
+print("RepAIr — STAGE 4b: CATBOOST CLASSIFIER")
 print("=" * 78)
 
 # =====================================================================
@@ -300,7 +300,7 @@ for rank, idx in enumerate(top_indices):
 # =====================================================================
 report_path = os.path.join(OUTPUT_DIR, 'catboost_report.txt')
 with open(report_path, 'w') as f:
-    f.write("ATAD5AI — STAGE 4b CATBOOST REPORT (Hybrid Consensus Pipeline)\n")
+    f.write("RepAIr — STAGE 4b CATBOOST REPORT (Hybrid Consensus Pipeline)\n")
     f.write("=" * 60 + "\n\n")
     f.write("ALGORITHM\n")
     f.write(f"  CatBoost (Categorical Boosting)\n")
